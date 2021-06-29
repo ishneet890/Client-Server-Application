@@ -47,22 +47,22 @@ void DOWN(struct Semaphore* S){
 	S->value = S->value - 1;
 	// The print statement commented below can be used to see 
 	// which client is calling down function with what semaphore value
-	printf("DOWN called by Client2 \n");
+	printf("DOWN called by Client3 \n");
 	// using these print statements we can verify the working of semaphore
 	if(S->value<0){
-		// when client2 tries to access critical section, but other client is already in critical section
-		// client2's pid is pushed into the semaphore queue
-		// client2 is then paused
+		// when client3 tries to access critical section, but other client is already in critical section
+		// client3's pid is pushed into the semaphore queue
+		// client3 is then paused
 		// later when other client comes out from critical section, 
-		// it sends a kill signal to wake up the client2 using pid of client2
-		printf("Client 2 is being locked: \n");
+		// it sends a kill signal to wake up the client3 using pid of client3
+		printf("Client 3 is being locked: \n");
 
 		// add the pid of process into semaphore queue
 		S->queueSemaphore[S->rqSemaphore] = getpid();
 		S->rqSemaphore = (S->rqSemaphore + 1)%(1009);
 		if(S->fqSemaphore==-1)S->fqSemaphore=0;
 		pause();
-		printf("Client 2 is being unblocked : \n");
+		printf("Client 3 is being unblocked : \n");
 	}
 	else
 		return;
@@ -70,11 +70,11 @@ void DOWN(struct Semaphore* S){
 
 void UP(struct Semaphore* S){
 	S->value = S->value + 1;
-	printf("UP is called by client2\n");
+	printf("UP is called by client3\n");
 	if(S->value<=0){
-		// Client2 has successfully accessed critical section, now it is leaving 
+		// Client3 has successfully accessed critical section, now it is leaving 
 		// so if any other process is in queue to access the critical section
-		// client2 sends a kill signal to allow access to critical section
+		// client3 sends a kill signal to allow access to critical section
 		int pid = S->queueSemaphore[S->fqSemaphore];
 		S->fqSemaphore = (S->fqSemaphore + 1)%1009 ;
 		kill(pid,SIGUSR1);
@@ -85,7 +85,7 @@ void UP(struct Semaphore* S){
 
 void my_handler(){}
 int main(){
-	printf("Client2 with PID %d has started \n",getpid());
+	printf("Client3 with PID %d has started \n",getpid());
 	signal(SIGUSR1,my_handler);
 
 	// Shared Memory for request queue
@@ -93,17 +93,17 @@ int main(){
 		// and is shared between server and all the clients
 				key_t keyForServer = ftok("buffer.txt",88);
 				if(keyForServer<0){
-					perror("errorKeyServerClient2: ");
+					perror("errorKeyServerClient3: ");
 					exit(0);
 				}
 				int shmForServer= shmget(keyForServer,sizeof(struct queueBuffer),IPC_CREAT | 0666);
 				if(shmForServer<0){
-					perror("errorShmServerClient2: ");
+					perror("errorShmServerClient3: ");
 					exit(0);
 				}
 				struct queueBuffer* queue = (struct queueBuffer*)shmat(shmForServer,NULL,0);
 				if(queue==(void*)-1){
-					perror("errorQueueClient2: ");
+					perror("errorQueueClient3: ");
 					exit(0);
 				}
 			// queue 
@@ -113,17 +113,17 @@ int main(){
 		// the semaphore data : (blockedQueue and semaphore value) is shared 
 				key_t keyForSemaphore = ftok("buffer.txt",123);
 				if(keyForSemaphore<0){
-					perror("errorKeyForSeamaphoreclient2: ");
+					perror("errorKeyForSeamaphoreclient3: ");
 					exit(0);
 				}
 				int shmForSemaphore = shmget(keyForSemaphore,sizeof(struct Semaphore),IPC_CREAT | 0666);
 				if(shmForSemaphore<0){
-					perror("errorShmForSemaphoreclient2: ");
+					perror("errorShmForSemaphoreclient3: ");
 					exit(0);
 				}
 				struct Semaphore* S = (struct Semaphore*)shmat(shmForSemaphore,NULL,0);
 				if(S==(void*)-1){
-					perror("errorSemaphoreclient2: ");
+					perror("errorSemaphoreclient3: ");
 					exit(0);
 				}
 	// Shared memory for Semaphores end here
@@ -132,24 +132,24 @@ int main(){
 		// service will place the computed value into this result buffer
 		// we will pass the shmid of this result buffer 
 		// so that service can attach itself to it , write the data, then detach itself
-				key_t keyForResult = ftok("buffer.txt",22);
+				key_t keyForResult = ftok("buffer.txt",33);
 				if(keyForResult<0){
-					perror("errorKeyResultClient2: ");
+					perror("errorKeyResultClient3: ");
 					exit(0);
 				}
 				int shmForResult = shmget(keyForResult,sizeof(int),IPC_CREAT | 0666);
 				if(shmForResult<0){
-					perror("errorShmForResultClient2: ");
+					perror("errorShmForResultClient3: ");
 					exit(0);
 				}
 				// since the resutl for all the three services we have choosen is an integer
 				// we have created a shared memory of integer type
-				int* result2 = (int*)shmat(shmForResult,NULL,0);
-				if(result2==(void*)-1){
-					perror("errorResultClient2: ");
+				int* result3 = (int*)shmat(shmForResult,NULL,0);
+				if(result3==(void*)-1){
+					perror("errorResultClient3: ");
 					exit(0);
 				}
-	// shared memory "result2" is created
+	// shared memory "result3" is created
 
 
 	// taking input from user
@@ -157,7 +157,7 @@ int main(){
 		// later this request will be enqueued into the queue for server process
 
 				struct requestBuffer* newRequest = (struct requestBuffer*)malloc(sizeof(struct requestBuffer));
-				// storing pid of client2 process
+				// storing pid of client3 process
 				// this pid will be used by service process to send a kill signal 
 				newRequest->PID = getpid();
 
@@ -188,14 +188,14 @@ int main(){
 					while( (queue->rear==(queue->qSize-1) && queue->front==0)  || (queue->rear)==(queue->front-1))sleep(2);
 				// enqueue the request
 
-					// now client2 will try to access the request queue,
+					// now client3 will try to access the request queue,
 					// since multiple processes can access this request queue
 					// Mutual Exclusion required here /////////////////////////////
 					
 							// DOWN is called 
 							DOWN(S);
 							for(long long int i=0;i<1e10;++i){
-								// client2 program acceses the queue for few milliseconds 
+								// client3 program acceses the queue for a very small amount of time 
 								// so it is not easy to see the working of semaphore
 								// So 
 								// we can use this loop to increase the access time of client in critical section
@@ -214,11 +214,11 @@ int main(){
 							UP(S);
 					////////////////////////////////////////////////////////////
 					pause();
-					if((*result2)==-1){
+					if((*result3)==-1){
 						printf("%d is not present in the given array\n",newRequest->inputData[5]);
 					}
 					else
-						printf("%d is found at index %d\n",newRequest->inputData[5],*result2);
+						printf("%d is found at index %d\n",newRequest->inputData[5],*result3);
 			}
 			else if(type==2){
 				newRequest->reqType = 2;
@@ -248,7 +248,7 @@ int main(){
 							UP(S);
 					////////////////////////////////////////////////////////////
 					pause();
-					printf("Factorial of %d is %d\n",newRequest->inputData[0],*result2);
+					printf("Factorial of %d is %d\n",newRequest->inputData[0],*result3);
 			}
 			else if(type==3){
 				newRequest->reqType = 3;
@@ -276,7 +276,7 @@ int main(){
 							UP(S);
 					////////////////////////////////////////////////////////////
 					pause();
-					printf("gcd(%d,%d) = %d\n",newRequest->inputData[0],newRequest->inputData[1],*result2);
+					printf("gcd(%d,%d) = %d\n",newRequest->inputData[0],newRequest->inputData[1],*result3);
 			}
 		}
 		else{
@@ -285,7 +285,7 @@ int main(){
 		// client has successfully used the services required
 		// now it will detach itself from the shared memories
 		shmdt(queue);
-		shmdt(result2);
+		shmdt(result3);
 		shmdt(S);
 
 		// free the shared memory for result buffer created
